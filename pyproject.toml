@@ -8,3 +8,5 @@ authors = [{name = "Dominik Stańczak", email = "dominik.stanczak@ifpilm.pl"}]
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
+description-file = "README.md"
+requires-python = ">=3.9"
