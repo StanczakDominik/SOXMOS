@@ -24,19 +24,43 @@ class SOXMOSFile:
         p = c["Parameters"]
         return f"{__class__.__name__}({p['Name']} #{p['ShotNo']} @{p['Date']})"
 
-    def plot_spectrogram(self):
-        self.dataset.set_coords("Rough_wavelength").Count.plot(
-            row="ch", x="Rough_wavelength", y="Time"
-        )
+    def plot_spectrogram(self, vmax=None):
+        self.dataset.FilteredCount.plot(x="Rough_wavelength", y="Time", col="ch", sharex=False, vmax=vmax)
         plt.suptitle(self)
 
     def plot_spectrum(self, time):
-        self.dataset.sel(Time=time, method="nearest").set_coords(
-            "Rough_wavelength"
-        ).FilteredCount.plot.line(x="Rough_wavelength", hue="ch")
-        plt.suptitle(self.path)
+        self.dataset.sel(Time=time, method="nearest").FilteredCount.plot.line(
+            x="Rough_wavelength", col="ch", sharex=False
+        )
+        plt.suptitle(f"{self.path}\nSavgol params: {self.savgol_settings}")
         plt.tight_layout()
-        plt.ylabel(f"Filtered count, Savgol params: {self.savgol_settings}")
+
+    def plot_global_timetrace(self):
+        backgrounds = []
+        for ch in [1, 2]:
+            ds = self.dataset.sel(ch=ch)
+            arr = ds.Count.sum(dim="pixel")
+            arr.name = r"$\sum_{pixel} count(time, pixel, ch)$"
+            timepeaks = signal.find_peaks(arr, distance=20, prominence = 50)
+            line, = arr.plot(x="Time", label=f"ch = {ch}")
+            
+            background = arr.where(
+                (arr.Time < 3) | (10 < arr.Time )
+            ).mean()
+            backgrounds.append(background / ds.pixel.size)
+            
+            
+            plt.axhline(background, color=line.get_color(), linestyle="--")
+            plt.annotate(
+                f"Inferred background ({ch=})",
+                (6, background - 3400),
+            );
+            
+            
+            
+        plt.legend()
+        return ("ch", backgrounds)
+
 
     @property
     def dataframe(self):
