@@ -24,7 +24,7 @@ class SOXMOSFile:
         p = c["Parameters"]
         return f"{__class__.__name__}({p['Name']} #{p['ShotNo']} @{p['Date']})"
 
-    def plot_spectrogram(self, vmax=None):
+    def plot_spectrogram(self, *, vmax=None):
         self.dataset.FilteredCount.plot(x="Rough_wavelength", y="Time", col="ch", sharex=False, vmax=vmax)
         plt.suptitle(self)
 
