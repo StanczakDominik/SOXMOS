@@ -22,7 +22,7 @@ class SOXMOSFile:
     def __repr__(self, *args, **kwargs):
         c = self.config
         p = c["Parameters"]
-        return f"{__class__.__name__}({p['Name']} #{p['ShotNo']} @{p['Date']})"
+        return f"{self.__class__.__name__}({p['Name']} #{p['ShotNo']} @{p['Date']})"
 
     def plot_spectrogram(self, *, vmax=None):
         self.dataset.FilteredCount.plot(x="Rough_wavelength", y="Time", col="ch", sharex=False, vmax=vmax)
@@ -111,7 +111,7 @@ class SOXMOSFile:
         for key in ["Name", "ShotNo", "Date"]:
             a[key] = self.config["Parameters"][key]
         return ds
-
+    
 
 def list_from_config(field):
     return field.replace("'", "").split(", ")
