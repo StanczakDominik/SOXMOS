@@ -1,0 +1,56 @@
+ci:
+  autofix_prs: true
+  autoupdate_schedule: monthly
+
+repos:
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.1.0
+  hooks:
+  - id: check-yaml
+  - id: check-json
+  - id: check-symlinks
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: check-ast
+  - id: requirements-txt-fixer
+
+- repo: https://github.com/PyCQA/isort
+  rev: 5.10.1
+  hooks:
+  - id: isort
+    name: isort
+    entry: isort
+    require_serial: true
+    language: python
+    types:
+    - python
+
+- repo: https://github.com/psf/black
+  rev: 21.12b0
+  hooks:
+  - id: black
+
+- repo: https://github.com/nbQA-dev/nbQA
+  rev: 1.2.2
+  hooks:
+  - id: nbqa-black
+    additional_dependencies:
+    - black==19.10b0
+    args:
+    - --nbqa-mutate
+  - id: nbqa-isort
+    additional_dependencies:
+    - isort==5.7.0
+    args:
+    - --nbqa-mutate
+
+- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  rev: v2.2.0
+  hooks:
+  - id: pretty-format-ini
+    args: [--autofix]
+  - id: pretty-format-toml
+    args: [--autofix]
+  - id: pretty-format-yaml
+    args: [--autofix, --indent, '2']
