@@ -20,10 +20,14 @@ class SOXMOSFile:
             window_length=savgol_window_length, polyorder=savgol_polyorder
         )
 
-    def __repr__(self, *args, **kwargs):
+    @property
+    def description(self):
         c = self.config
         p = c["Parameters"]
-        return f"{self.__class__.__name__}({p['Name']} #{p['ShotNo']} @{p['Date']})"
+        return f"{p['Name']} #{p['ShotNo']} @{p['Date']}"
+
+    def __repr__(self, *args, **kwargs):
+        return f"{self.__class__.__name__}({self.description})"
 
     def plot_spectrogram(self, *, vmax=None):
         self.dataset.FilteredCount.plot(
