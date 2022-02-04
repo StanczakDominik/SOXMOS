@@ -1,10 +1,11 @@
-import pathlib
-import pandas as pd
 import configparser
 import itertools
+import pathlib
 from functools import cached_property
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import xarray
 from scipy import signal
 
@@ -25,7 +26,9 @@ class SOXMOSFile:
         return f"{self.__class__.__name__}({p['Name']} #{p['ShotNo']} @{p['Date']})"
 
     def plot_spectrogram(self, *, vmax=None):
-        self.dataset.FilteredCount.plot(x="Rough_wavelength", y="Time", col="ch", sharex=False, vmax=vmax)
+        self.dataset.FilteredCount.plot(
+            x="Rough_wavelength", y="Time", col="ch", sharex=False, vmax=vmax
+        )
         plt.suptitle(self)
 
     def plot_spectrum(self, time):
@@ -41,26 +44,20 @@ class SOXMOSFile:
             ds = self.dataset.sel(ch=ch)
             arr = ds.Count.sum(dim="pixel")
             arr.name = r"$\sum_{pixel} count(time, pixel, ch)$"
-            timepeaks = signal.find_peaks(arr, distance=20, prominence = 50)
-            line, = arr.plot(x="Time", label=f"ch = {ch}")
-            
-            background = arr.where(
-                (arr.Time < 3) | (10 < arr.Time )
-            ).mean()
+            timepeaks = signal.find_peaks(arr, distance=20, prominence=50)
+            (line,) = arr.plot(x="Time", label=f"ch = {ch}")
+
+            background = arr.where((arr.Time < 3) | (10 < arr.Time)).mean()
             backgrounds.append(background / ds.pixel.size)
-            
-            
+
             plt.axhline(background, color=line.get_color(), linestyle="--")
             plt.annotate(
                 f"Inferred background ({ch=})",
                 (6, background - 3400),
-            );
-            
-            
-            
+            )
+
         plt.legend()
         return ("ch", backgrounds)
-
 
     @property
     def dataframe(self):
@@ -94,6 +91,13 @@ class SOXMOSFile:
             .drop_vars(["Time", "ch", "pixel"])
             .unstack("index")
         )
+        # verify that wavelengths are flat (constant with time)
+        WLs = ds.Rough_wavelength
+        unique_WLs = np.unique(WLs).size == (WLs.ch.size * WLs.pixel.size)
+        assert unique_WLs
+        ds["Rough_wavelength"] = ds["Rough_wavelength"].isel(Time=0)
+        ds = ds.set_coords("Rough_wavelength")
+
         ds["FilteredCount"] = xarray.apply_ufunc(
             signal.savgol_filter,
             ds.Count,
@@ -102,7 +106,6 @@ class SOXMOSFile:
             output_core_dims=[["pixel"]],
         )
         ds["FilteredCount"].attrs.update(self.savgol_settings)
-        ds = ds.set_coords("Rough_wavelength")
         ds["Time"].attrs["units"] = "s"
         ds["Rough_wavelength"].attrs["units"] = "nm"
         a = ds.attrs
@@ -111,7 +114,7 @@ class SOXMOSFile:
         for key in ["Name", "ShotNo", "Date"]:
             a[key] = self.config["Parameters"][key]
         return ds
-    
+
 
 def list_from_config(field):
     return field.replace("'", "").split(", ")
