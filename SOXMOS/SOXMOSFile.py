@@ -7,7 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray
+from joblib import Memory
 from scipy import signal
+
+location = "./cachedir"
+memory = Memory(location, verbose=0)
 
 
 class SOXMOSFile:
@@ -52,61 +56,9 @@ class SOXMOSFile:
         plot = arr.plot(x="Time", col="ch", sharey=False)
         return plot
 
-    @property
-    def dataframe(self):
-        df = pd.read_table(
-            self.path, comment="#", header=None, sep=",\s+", engine="python"
-        )
-        columns = list(
-            itertools.chain.from_iterable(
-                [
-                    list_from_config(self.config["Parameters"][category_name])
-                    for category_name in ["DimName", "ValName"]
-                ]
-            )
-        )
-        df.columns = columns
-        return df
-
     @cached_property
     def dataset(self):
-        ds = self.dataframe.to_xarray()
-        # https://stackoverflow.com/questions/70861487/turn-1d-indexed-xarray-variables-into-3d-coordinates/70873363#70873363
-        ds = (
-            ds.assign_coords(
-                {
-                    "index": pd.MultiIndex.from_arrays(
-                        [ds.Time.values, ds.ch.values, ds.pixel.values],
-                        names=["Time", "ch", "pixel"],
-                    )
-                }
-            )
-            .drop_vars(["Time", "ch", "pixel"])
-            .unstack("index")
-        )
-        # verify that wavelengths are flat (constant with time)
-        WLs = ds.Rough_wavelength
-        unique_WLs = np.unique(WLs).size == (WLs.ch.size * WLs.pixel.size)
-        assert unique_WLs
-        ds["Rough_wavelength"] = ds["Rough_wavelength"].isel(Time=0)
-        ds = ds.set_coords("Rough_wavelength")
-
-        ds["FilteredCount"] = xarray.apply_ufunc(
-            signal.savgol_filter,
-            ds.Count,
-            kwargs=self.savgol_settings,
-            input_core_dims=[["pixel"]],
-            output_core_dims=[["pixel"]],
-        )
-        ds["FilteredCount"].attrs.update(self.savgol_settings)
-        ds["Time"].attrs["units"] = "s"
-        ds["Rough_wavelength"].attrs["units"] = "nm"
-        a = ds.attrs
-        for key, value in self.config["Comments"].items():
-            a[key] = value
-        for key in ["Name", "ShotNo", "Date"]:
-            a[key] = self.config["Parameters"][key]
-        return ds
+        return parse_everything(self.path, self.savgol_settings)
 
 
 def list_from_config(field):
@@ -114,11 +66,76 @@ def list_from_config(field):
 
 
 def parse_config(path):
-    # TODO inefficient to read this twice
-    lines = path.read_text().splitlines()
-    parsedlines = list(filter(lambda line: line.startswith("# "), lines))
-    parsedlines = [line[2:] for line in parsedlines]
+    parsedlines = []
+    with path.open() as f:
+        line = f.readline()
+        while line.startswith("# "):
+            parsedlines.append(line[2:])
+            line = f.readline()
+
     configstr = "\n".join(parsedlines)
     config = configparser.ConfigParser()
     config.read_string(configstr)
     return config
+
+
+def parse_dataframe(path, config):
+    df = pd.read_table(path, comment="#", header=None, sep=",\s+", engine="python")
+    columns = list(
+        itertools.chain.from_iterable(
+            [
+                list_from_config(config["Parameters"][category_name])
+                for category_name in ["DimName", "ValName"]
+            ]
+        )
+    )
+    df.columns = columns
+    return df
+
+
+def parse_dataset(dataframe, config, savgol_settings):
+    ds = dataframe.to_xarray()
+    # https://stackoverflow.com/questions/70861487/turn-1d-indexed-xarray-variables-into-3d-coordinates/70873363#70873363
+    ds = (
+        ds.assign_coords(
+            {
+                "index": pd.MultiIndex.from_arrays(
+                    [ds.Time.values, ds.ch.values, ds.pixel.values],
+                    names=["Time", "ch", "pixel"],
+                )
+            }
+        )
+        .drop_vars(["Time", "ch", "pixel"])
+        .unstack("index")
+    )
+    # verify that wavelengths are flat (constant with time)
+    WLs = ds.Rough_wavelength
+    unique_WLs = np.unique(WLs).size == (WLs.ch.size * WLs.pixel.size)
+    assert unique_WLs
+    ds["Rough_wavelength"] = ds["Rough_wavelength"].isel(Time=0)
+    ds = ds.set_coords("Rough_wavelength")
+
+    ds["FilteredCount"] = xarray.apply_ufunc(
+        signal.savgol_filter,
+        ds.Count,
+        kwargs=savgol_settings,
+        input_core_dims=[["pixel"]],
+        output_core_dims=[["pixel"]],
+    )
+    ds["FilteredCount"].attrs.update(savgol_settings)
+    ds["Time"].attrs["units"] = "s"
+    ds["Rough_wavelength"].attrs["units"] = "nm"
+    a = ds.attrs
+    for key, value in config["Comments"].items():
+        a[key] = value
+    for key in ["Name", "ShotNo", "Date"]:
+        a[key] = config["Parameters"][key]
+    return ds
+
+
+@memory.cache
+def parse_everything(path, savgol_settings):
+    config = parse_config(path)
+    dataframe = parse_dataframe(path, config)
+    dataset = parse_dataset(dataframe, config, savgol_settings)
+    return dataset
