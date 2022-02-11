@@ -40,7 +40,7 @@ class SOXMOSFile:
         plot = self.dataset.sel(Time=time, method="nearest").FilteredCount.plot.line(
             x="Rough_wavelength", col="ch", sharex=False
         )
-        plt.suptitle(f"{self.path}\nSavgol params: {self.savgol_settings}")
+        plt.suptitle(f"{self}\nSavgol params: {self.savgol_settings}")
         plt.tight_layout()
         return plot
 
@@ -55,7 +55,7 @@ class SOXMOSFile:
     @property
     def dataframe(self):
         df = pd.read_table(
-            self.path, comment="#", header=None, sep=",\s", engine="python"
+            self.path, comment="#", header=None, sep=",\s+", engine="python"
         )
         columns = list(
             itertools.chain.from_iterable(
