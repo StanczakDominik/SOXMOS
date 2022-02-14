@@ -69,7 +69,7 @@ def parse_config(path):
     parsedlines = []
     with path.open() as f:
         line = f.readline()
-        while line.startswith("# "):
+        while line.startswith("#"):
             parsedlines.append(line[2:])
             line = f.readline()
 
