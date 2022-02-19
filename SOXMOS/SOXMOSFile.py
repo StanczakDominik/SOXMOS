@@ -39,11 +39,18 @@ class SOXMOSFile:
     def __repr__(self, *args, **kwargs):
         return f"{self.__class__.__name__}({self.description})"
 
-    def plot_spectrogram(self, *, vmax=None):
+    def plot_spectrogram(self, *, vmax=None, file=None):
         fig = self.dataset.FilteredCount.plot(
-            x="Rough_wavelength", y="Time", col="ch", sharex=False, vmax=vmax
+            x="Rough_wavelength",
+            y="Time",
+            col="ch",
+            sharex=False,
+            vmax=vmax,
+            robust=True,
         )
         plt.suptitle(self)
+        if file is not None:
+            plt.savefig(str(file))
         return fig
 
     def plot_spectrum(self, time):
@@ -54,12 +61,14 @@ class SOXMOSFile:
         plt.tight_layout()
         return plot
 
-    def plot_global_timetrace(self):
+    def plot_global_timetrace(self, file=None):
         # for ch in [1, 2]:
         ds = self.dataset
         arr = ds.Count.sum(dim="pixel")
         arr.name = r"$\sum_{pixel} count(time, pixel, ch)$"
         plot = arr.plot(x="Time", col="ch", sharey=False)
+        if file is not None:
+            plt.savefig(str(file))
         return plot
 
     @cached_property
