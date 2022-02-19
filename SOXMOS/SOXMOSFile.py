@@ -60,6 +60,10 @@ class SOXMOSFile:
     def dataset(self):
         return parse_everything(self.path, self.savgol_settings)
 
+    @property
+    def WL_resolution(self):
+        return self.dataset.Rough_wavelength.diff(dim="pixel").max(dim="pixel")
+
 
 def list_from_config(field):
     return field.replace("'", "").split(", ")
@@ -80,7 +84,7 @@ def parse_config(path):
 
 
 def parse_dataframe(path, config):
-    df = pd.read_table(path, comment="#", header=None, sep=",\s+", engine="python")
+    df = pd.read_table(path, comment="#", header=None, sep=r",\s+", engine="python")
     columns = list(
         itertools.chain.from_iterable(
             [
