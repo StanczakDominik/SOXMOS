@@ -30,6 +30,12 @@ class SOXMOSFile:
         p = c["Parameters"]
         return f"{p['Name']} #{p['ShotNo']} @{p['Date']}"
 
+    @property
+    def shotid(self):
+        c = self.config
+        p = c["Parameters"]
+        return p["ShotNo"]
+
     def __repr__(self, *args, **kwargs):
         return f"{self.__class__.__name__}({self.description})"
 
