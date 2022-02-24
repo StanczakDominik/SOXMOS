@@ -23,6 +23,7 @@ dependencies = [
 test = [
     "pytest>=6.2.5",
     "pre-commit>=2.17.0",
+    "pytest-datadir",
 ]
 deploy = [
     "flit>=3.5.1",
