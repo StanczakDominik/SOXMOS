@@ -1,0 +1,24 @@
+<xarray.Dataset>
+Dimensions:           (ch: 2, pixel: 1024, Time: 50)
+Coordinates:
+    Rough_wavelength  (ch, pixel) float64 19.52 19.53 19.55 ... 101.6 101.6
+  * Time              (Time) float64 2.525 2.575 2.625 ... 4.875 4.925 4.975
+  * ch                (ch) int64 1 2
+  * pixel             (pixel) int64 1 2 3 4 5 6 ... 1020 1021 1022 1023 1024
+Data variables:
+    Count             (Time, ch, pixel) int64 454 215 260 341 ... 272 339 267
+    FilteredCount     (Time, ch, pixel) float64 349.1 331.2 ... 299.8 292.2
+Attributes: (12/19)
+    bt:         1.0
+    rax:        1.0
+    bq:         1.0
+    gamma:      1.2538
+    expdate:    20050402
+    cycle:      69
+    ...         ...
+    beta0_ch2:  0.1
+    m_ch1:      2.0
+    m_ch2:      2.0
+    Name:       SOXMOSTestShot
+    ShotNo:     66642069
+    Date:       '02/04/2005 21:37'

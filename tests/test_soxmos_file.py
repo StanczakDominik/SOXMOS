@@ -30,6 +30,7 @@ def test_description(test_file):
     assert test_file.description == "SOXMOSTestShot #66642069 @'02/04/2005 21:37'"
 
 
+
 def test_spectromgram_actually_plots(test_file, tmp_path):
     test_file.plot_spectrogram().fig.savefig(tmp_path / f"spectrogram.png")
     test_file.plot_spectrogram(vmax=1000).fig.savefig(

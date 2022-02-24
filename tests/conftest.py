@@ -6,5 +6,9 @@ from SOXMOS import SOXMOSFile
 
 
 @pytest.fixture
-def test_file():
-    return SOXMOSFile(Path(__file__).parent / "test_data.dat")
+def test_path(shared_datadir):
+    return shared_datadir / "test_data.dat"
+
+@pytest.fixture
+def test_file(test_path):
+    return SOXMOSFile(test_path)
