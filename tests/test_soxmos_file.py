@@ -31,7 +31,7 @@ def test_description(test_file):
 
 
 
-def test_spectromgram_actually_plots(test_file, tmp_path):
+def test_spectrogram_actually_plots(test_file, tmp_path):
     test_file.plot_spectrogram().fig.savefig(tmp_path / f"spectrogram.png")
     test_file.plot_spectrogram(vmax=1000).fig.savefig(
         tmp_path / f"spectrogram_max1000.png"
