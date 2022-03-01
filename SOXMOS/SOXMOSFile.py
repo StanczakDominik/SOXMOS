@@ -148,7 +148,7 @@ def parse_dataset(dataframe, config, savgol_settings):
     return ds
 
 
-@memory.cache
+@memory.cache  # pragma: no cover
 def parse_everything(path, savgol_settings):
     config = parse_config(path)
     dataframe = parse_dataframe(path, config)
