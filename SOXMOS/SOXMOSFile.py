@@ -1,5 +1,6 @@
 import configparser
 import itertools
+import os
 import pathlib
 from functools import cached_property
 
@@ -10,7 +11,8 @@ import xarray
 from joblib import Memory
 from scipy import signal
 
-location = "./cachedir"
+memflag = os.environ.get("TEST_SOXMOS", False)
+location = None if memflag else "./cachedir"
 memory = Memory(location, verbose=0)
 
 
