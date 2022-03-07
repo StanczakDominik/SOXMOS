@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 from SOXMOS.SOXMOSFile import parse_config, parse_dataframe, parse_dataset
+
 
 def test_dataset_dataframe_parses(test_path, shared_datadir):
     config = parse_config(test_path)
@@ -8,4 +10,3 @@ def test_dataset_dataframe_parses(test_path, shared_datadir):
     contents = shared_datadir / "saved_dataset.txt"
     print(str(ds))
     assert str(ds) == contents.read_text().strip()
-

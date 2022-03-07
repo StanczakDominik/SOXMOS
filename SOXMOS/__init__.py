@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ SOXMOS spectrometer file parser, plotter"""
 from .SOXMOSFile import SOXMOSFile
 
