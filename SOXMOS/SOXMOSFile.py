@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import configparser
 import itertools
 import os

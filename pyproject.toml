@@ -28,3 +28,6 @@ test = [
 deploy = [
     "flit>=3.5.1",
     ]
+
+[tool.isort]
+profile = "black"
