@@ -83,6 +83,7 @@ def list_from_config(field):
     return field.replace("'", "").split(", ")
 
 
+@memory.cache  # pragma: no cover
 def parse_config(path):
     parsedlines = []
     with path.open() as f:
@@ -97,6 +98,7 @@ def parse_config(path):
     return config
 
 
+@memory.cache  # pragma: no cover
 def parse_dataframe(path, config):
     df = pd.read_table(path, comment="#", header=None, sep=r",\s+", engine="python")
     columns = list(
@@ -111,6 +113,7 @@ def parse_dataframe(path, config):
     return df
 
 
+@memory.cache  # pragma: no cover
 def parse_dataset(dataframe, config, savgol_settings):
     ds = dataframe.to_xarray()
     # https://stackoverflow.com/questions/70861487/turn-1d-indexed-xarray-variables-into-3d-coordinates/70873363#70873363
@@ -133,6 +136,7 @@ def parse_dataset(dataframe, config, savgol_settings):
     ds["Rough_wavelength"] = ds["Rough_wavelength"].isel(Time=0)
     ds = ds.set_coords("Rough_wavelength")
 
+    ds["Count"] = ds.Count.where(ds.Count.median("Time") != 0, np.nan)
     ds["FilteredCount"] = xarray.apply_ufunc(
         signal.savgol_filter,
         ds.Count,
@@ -151,7 +155,6 @@ def parse_dataset(dataframe, config, savgol_settings):
     return ds
 
 
-@memory.cache  # pragma: no cover
 def parse_everything(path, savgol_settings):
     config = parse_config(path)
     dataframe = parse_dataframe(path, config)
