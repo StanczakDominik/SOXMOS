@@ -145,6 +145,9 @@ def parse_dataset(dataframe, config, savgol_settings):
         output_core_dims=[["pixel"]],
     )
     ds["FilteredCount"].attrs.update(savgol_settings)
+    for key in ["Count", "FilteredCount"]:
+        ds[key].attrs["units"] = "counts"
+    ds["FilteredCount"].attrs.update(savgol_settings)
     ds["Time"].attrs["units"] = "s"
     ds["Rough_wavelength"].attrs["units"] = "nm"
     a = ds.attrs
