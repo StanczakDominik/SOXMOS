@@ -26,6 +26,7 @@ class SOXMOSFile:
         self.savgol_settings = dict(
             window_length=savgol_window_length, polyorder=savgol_polyorder
         )
+        print(f"Savgol settings for {self.shotid}: {self.savgol_settings}")
 
     @property
     def description(self):
