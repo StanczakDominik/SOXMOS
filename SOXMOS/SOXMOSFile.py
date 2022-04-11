@@ -27,13 +27,11 @@ savgol_settings = {
 
 class SOXMOSFile:
     def __init__(
-        self, path: pathlib.Path, *, savgol_window_length=13, savgol_polyorder=4
+        self, path: pathlib.Path, savgol_settings: dict
     ):
         self.path = path
         self.config = parse_config(path)
-        self.savgol_settings = dict(
-            window_length=savgol_window_length, polyorder=savgol_polyorder
-        )
+        self.savgol_settings = savgol_settings
 
     @property
     def description(self):
