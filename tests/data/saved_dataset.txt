@@ -7,7 +7,7 @@ Coordinates:
   * pixel             (pixel) int64 1 2 3 4 5 6 ... 1020 1021 1022 1023 1024
 Data variables:
     Count             (Time, ch, pixel) float64 nan 215.0 260.0 ... 339.0 267.0
-    FilteredCount     (Time, ch, pixel) float64 nan nan nan ... 299.8 292.2
+    FilteredCount     (ch, Time, pixel) float64 nan nan nan ... 304.8 278.9
 Attributes: (12/19)
     bt:         1.0
     rax:        1.0

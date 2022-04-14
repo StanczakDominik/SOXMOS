@@ -25,10 +25,26 @@ savgol_settings = {
 }
 
 
+def _add_lines(fig, lines, direction, unit="s", ls="--", alpha=0.3):
+    for i, (key, value) in enumerate(lines.items()):
+        for ax in fig.axes[0]:
+            if direction == "vertical":
+                func = ax.axvline
+            elif direction == "horizontal":
+                func = ax.axhline
+            else:
+                raise ValueError(direction)
+            func(
+                value,
+                c=f"C{i}",
+                ls=ls,
+                alpha=alpha,
+                label=f"{key} at {value:.3f}{unit}",
+            )
+
+
 class SOXMOSFile:
-    def __init__(
-        self, path: pathlib.Path, savgol_settings: dict
-    ):
+    def __init__(self, path: pathlib.Path, savgol_settings: dict):
         self.path = path
         self.config = parse_config(path)
         self.savgol_settings = savgol_settings
@@ -55,7 +71,7 @@ class SOXMOSFile:
         max1, max2 = Lambda.max(dim="pixel").data
         return {1: (min1, max1), 2: (min2, max2)}
 
-    def plot_spectrogram(self, *, vmax=None):
+    def plot_spectrogram(self, *, vmax=None, **special_lines):
         fig = self.dataset.FilteredCount.plot(
             x="Rough_wavelength",
             y="Time",
@@ -64,23 +80,26 @@ class SOXMOSFile:
             vmax=vmax,
             robust=True,
         )
+        _add_lines(fig, special_lines, "horizontal")
         plt.suptitle(self)
         return fig
 
-    def plot_spectrum(self, time):
+    def plot_spectrum(self, time, **special_lines):
         plot = self.dataset.sel(Time=time, method="nearest").FilteredCount.plot.line(
             x="Rough_wavelength", col="ch", sharex=False
         )
         plt.suptitle(f"{self}\nSavgol params: {self.savgol_settings}")
         plt.tight_layout()
+        _add_lines(plot, special_lines, "vertical")
         return plot
 
-    def plot_global_timetrace(self):
+    def plot_global_timetrace(self, **special_lines):
         # for ch in [1, 2]:
         ds = self.dataset
         arr = ds.Count.sum(dim="pixel")
         arr.name = r"$\sum_{pixel} count(time, pixel, ch)$"
         plot = arr.plot(x="Time", col="ch", sharey=False)
+        _add_lines(plot, special_lines, "vertical")
         return plot
 
     @cached_property
