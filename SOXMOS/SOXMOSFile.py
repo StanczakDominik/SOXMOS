@@ -32,7 +32,7 @@ def _add_lines(fig, lines, direction, unit="s", ls="--", alpha=0.3):
                 func = ax.axvline
             elif direction == "horizontal":
                 func = ax.axhline
-            else:
+            else:  # pragma: no cover
                 raise ValueError(direction)
             func(
                 value,
