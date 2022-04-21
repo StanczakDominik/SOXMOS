@@ -8,6 +8,7 @@ from functools import cached_property
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from typing import Optional
 import xarray
 from joblib import Memory
 from scipy import signal
@@ -42,24 +43,34 @@ def _add_lines(fig, lines, direction, unit="s", ls="--", alpha=0.3):
                 label=f"{key} at {value:.3f}{unit}",
             )
 
-
+import dataclasses
+@dataclasses.dataclass
 class SOXMOSFile:
-    def __init__(self, path: pathlib.Path, savgol_settings: dict):
-        self.path = path
-        self.config = parse_config(path)
-        self.savgol_settings = savgol_settings
+    dataset: xarray.Dataset
+    savgol_settings: dict
+    path: Optional[pathlib.Path] = None
 
+    @classmethod
+    def from_file(cls, path: pathlib.Path, savgol_settings: dict):
+        config = parse_config(path)
+        dataset = parse_from_path(path, config, savgol_settings)
+        return cls(dataset, savgol_settings, path)
+
+        
+    @classmethod
+    def from_web(cls, shotno, savgol_settings: dict):
+        dataset = parse_from_web(shotno, savgol_settings)
+        return cls(dataset, savgol_settings)
+    
     @property
     def description(self):
-        c = self.config
-        p = c["Parameters"]
-        return f"{p['Name']} #{p['ShotNo']} @{p['Date']}"
+        c = self.dataset.attrs
+        return f"{c['Name']} #{c['ShotNo']} @{c['Date']}"
 
     @property
     def shotid(self):
-        c = self.config
-        p = c["Parameters"]
-        return p["ShotNo"]
+        c = self.dataset.attrs
+        return c["ShotNo"]
 
     def __repr__(self, *args, **kwargs):
         return f"{self.__class__.__name__}({self.description})"
@@ -102,9 +113,6 @@ class SOXMOSFile:
         _add_lines(plot, special_lines, "vertical")
         return plot
 
-    @cached_property
-    def dataset(self):
-        return parse_everything(self.path, self.savgol_settings)
 
     @property
     def WL_resolution(self):
@@ -115,6 +123,7 @@ def list_from_config(field):
     return field.replace("'", "").split(", ")
 
 
+# +
 @memory.cache  # pragma: no cover
 def parse_config(path):
     parsedlines = []
@@ -129,23 +138,6 @@ def parse_config(path):
     config.read_string(configstr)
     return config
 
-
-@memory.cache  # pragma: no cover
-def parse_dataframe(path, config):
-    df = pd.read_table(path, comment="#", header=None, sep=r",\s+", engine="python")
-    columns = list(
-        itertools.chain.from_iterable(
-            [
-                list_from_config(config["Parameters"][category_name])
-                for category_name in ["DimName", "ValName"]
-            ]
-        )
-    )
-    df.columns = columns
-    return df
-
-
-@memory.cache  # pragma: no cover
 def parse_dataset(dataframe, config, savgol_settings):
     ds = dataframe.to_xarray()
     # https://stackoverflow.com/questions/70861487/turn-1d-indexed-xarray-variables-into-3d-coordinates/70873363#70873363
@@ -161,15 +153,43 @@ def parse_dataset(dataframe, config, savgol_settings):
         .drop_vars(["Time", "ch", "pixel"])
         .unstack("index")
     )
-    # verify that wavelengths are flat (constant with time)
-    WLs = ds.Rough_wavelength
-    unique_WLs = np.unique(WLs).size == (WLs.ch.size * WLs.pixel.size)
-    assert unique_WLs
-    ds["Rough_wavelength"] = ds["Rough_wavelength"].isel(Time=0)
+    for ds_key in ds:
+        da = ds[ds_key]
+        flat_dims = {dim: not (da.diff(dim).any().item()) for dim in da.dims}
+
+        for key, value in flat_dims.items():
+            if not value:
+                continue
+            print(f"Flattening {value} at {key}")
+            ds[da.name] = da.isel({key: 0})
+    parameters = config["Parameters"]
+    def parse(s):
+        return s.strip(",").replace("'", "").split(", ")
+    
+    dimname = parse(parameters["dimname"])
+    dimunit = parse(parameters["dimunit"])
+    dimsize = list(map(int, parse(parameters["dimsize"])))
+    valname = parse(parameters["valname"])
+    valunit = parse(parameters["valunit"])
+    
+    for name, unit, size in zip(dimname, dimunit, dimsize):
+        ds[name].attrs["units"] = unit
+        assert ds.sizes[name] == size
+    for name, unit in zip(valname, valunit):
+        ds[name].attrs["units"] = unit
+
+    a = ds.attrs
+    a.update(config["Comments"])
+    for key in ["Name", "ShotNo", "Date"]:
+        a[key] = config["Parameters"][key]
+        
+    #####
     ds = ds.set_coords("Rough_wavelength")
 
     ds["Count"] = ds.Count.where(ds.Count.median("Time") != 0, np.nan)
 
+        
+    #####
     def filter_helper(group):
         Lambda = group.Rough_wavelength
         interval = (Lambda.min().item(), Lambda.max().item())
@@ -185,21 +205,39 @@ def parse_dataset(dataframe, config, savgol_settings):
 
     ds["FilteredCount"] = ds.groupby("ch").apply(filter_helper)
     ds["FilteredCount"].attrs.update(savgol_settings)
-    for key in ["Count", "FilteredCount"]:
-        ds[key].attrs["units"] = "counts"
-    ds["FilteredCount"].attrs.update(savgol_settings)
-    ds["Time"].attrs["units"] = "s"
-    ds["Rough_wavelength"].attrs["units"] = "nm"
-    a = ds.attrs
-    for key, value in config["Comments"].items():
-        a[key] = value
-    for key in ["Name", "ShotNo", "Date"]:
-        a[key] = config["Parameters"][key]
+    ds["FilteredCount"].attrs["units"] = ds["Count"].attrs["units"]
     return ds
 
 
-def parse_everything(path, savgol_settings):
-    config = parse_config(path)
-    dataframe = parse_dataframe(path, config)
-    dataset = parse_dataset(dataframe, config, savgol_settings)
-    return dataset
+
+@memory.cache  # pragma: no cover
+def parse_from_path(path, config, savgol_settings):
+    df = pd.read_table(path, comment="#", header=None, sep=r",\s+", engine="python")
+    columns = list(
+        itertools.chain.from_iterable(
+            [
+                list_from_config(config["Parameters"][category_name])
+                for category_name in ["DimName", "ValName"]
+            ]
+        )
+    )
+    df.columns = columns
+    return parse_dataset(df, config, savgol_settings)
+
+
+@memory.cache
+def parse_from_web(shotno, savgol_settings):
+    import requests
+    import io
+    diagnostic = "soxmos"
+    url = f"https://exp.lhd.nifs.ac.jp/opendata/LHD/webapi.fcgi?cmd=getfile&diag={diagnostic}&shotno={shotno}&subno=1"
+    result = requests.get(url)
+    parsedlines = []
+    for line in result.content.splitlines():
+        if line.startswith(b"#"):
+            parsedlines.append(line[2:].decode())
+
+    configstr = "\n".join(parsedlines)
+    config = configparser.ConfigParser()
+    config.read_string(configstr)
+    return parse_from_path.func(io.BytesIO(result.content), config, savgol_settings)

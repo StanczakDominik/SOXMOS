@@ -10,23 +10,6 @@ def test_dataset_variables(test_file):
         assert var in ds
 
 
-def test_config(test_file):
-    print(test_file.config)
-    for key in [
-        "name",
-        "shotno",
-        "date",
-        "dimno",
-        "dimname",
-        "dimsize",
-        "dimunit",
-        "valno",
-        "valname",
-        "valunit",
-    ]:
-        assert key in test_file.config["Parameters"]
-
-
 def test_description(test_file):
     assert test_file.description == "SOXMOSTestShot #66642069 @'02/04/2005 21:37'"
 

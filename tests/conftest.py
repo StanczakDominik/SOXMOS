@@ -17,4 +17,4 @@ def test_path(shared_datadir):
 
 @pytest.fixture
 def test_file(test_path):
-    return SOXMOSFile(test_path, savgol_settings)
+    return SOXMOSFile.from_file(test_path, savgol_settings)
